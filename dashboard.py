@@ -2,183 +2,108 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
-from datetime import datetime, timedelta
-import random
+from datetime import datetime
 
-# -----------------------------
-# PAGE SETUP
-# -----------------------------
 st.set_page_config(page_title="Testimony Dashboard", layout="wide")
 
-# -----------------------------
-# AUTO REFRESH EVERY 30 MIN
-# -----------------------------
-st_autorefresh_interval = 30 * 60 * 1000
-st_autorefresh = st.experimental_rerun if hasattr(st, "experimental_rerun") else None
-if st_autorefresh:
-    st_autorefresh()
+# ======================
+# LOAD DATA
+# ======================
+@st.cache_data(ttl=1800)  # Refresh every 30 mins
+def load_testimonies():
+    return pd.read_csv("testimonies.csv")
 
-# -----------------------------
-# SIMULATED DATA GENERATION
-# -----------------------------
-platforms = ["YouTube", "TikTok", "X", "Instagram", "Reddit"]
-age_ranges = ["13-17", "18-24", "25-34", "35-44", "45-54", "55+"]
-topics = ["Prophetic Vision", "End Times", "Near-Death Experience", "Salvation Testimony"]
+testimonies_df = load_testimonies()
 
-def credibility_algorithm(base_score, comment_ratio, ridicule_factor):
-    """Adjust credibility based on comment sentiment and posting patterns."""
-    adjusted = base_score + (comment_ratio * 10) - (ridicule_factor * 5)
-    return max(0, min(100, adjusted))
+st.title("Testimony Dashboard (Real-Time & Interactive)")
+st.write("Explore prophetic dreams, visions, near-death experiences, salvation testimonies, and Christian persecution trends.")
 
-def generate_testimonies(num=200):
-    testimonies = []
-    for _ in range(num):
-        platform = random.choice(platforms)
-        title = f"{random.choice(topics)} #{random.randint(1, 500)}"
-        age_range = random.choice(age_ranges)
-        base_credibility = random.randint(50, 90)
-        comment_ratio = random.uniform(0.4, 0.9)  # Encouraging comments %
-        ridicule_factor = random.uniform(0, 0.3)  # Ridicule %
-        credibility_score = credibility_algorithm(base_credibility, comment_ratio, ridicule_factor)
-        is_believer = random.choice([True, False])
-        timestamp = datetime.now() - timedelta(days=random.randint(0, 365*10))
-        description = f"A testimony about {title.lower()} from {platform}."
-        url = f"https://{platform.lower()}.com/post/{random.randint(10000,99999)}"
-        
-        testimonies.append({
-            "title": title,
-            "platform": platform,
-            "age_range": age_range,
-            "credibility_score": credibility_score,
-            "is_believer": is_believer,
-            "description": description,
-            "source_url": url,
-            "timestamp": timestamp,
-            "comment_ratio": round(comment_ratio * 100, 2),
-            "ridicule_factor": round(ridicule_factor * 100, 2)
-        })
-    return testimonies
-
-testimonies_data = generate_testimonies()
-
-# Persecution data
-def generate_persecution_data(years=10):
-    data = []
-    current_year = datetime.now().year
-    for year in range(current_year - years, current_year + 1):
-        cases = random.randint(5000, 30000)
-        online_percentage = round(random.uniform(5, 25), 2)
-        data.append({
-            "year": year,
-            "cases": cases,
-            "online_percentage": online_percentage,
-            "links": [f"https://news.example.com/persecution/{year}/{i}" for i in range(1, 4)]
-        })
-    return data
-
-persecution_data = generate_persecution_data()
-
-# -----------------------------
-# REAL-TIME SCRAPING (API PLACEHOLDER)
-# -----------------------------
-def fetch_real_time_data():
-    # Placeholder for actual API integration
-    return []
-
-api_data = fetch_real_time_data()
-if api_data:
-    testimonies_data.extend(api_data)
-
-# -----------------------------
-# SIDEBAR FILTERS
-# -----------------------------
+# ======================
+# FILTERS
+# ======================
 st.sidebar.header("Filters")
-selected_platform = st.sidebar.multiselect("Platform", platforms, default=platforms)
-selected_topic = st.sidebar.multiselect("Topic", topics, default=topics)
-selected_age = st.sidebar.multiselect("Age Range", age_ranges, default=age_ranges)
-min_credibility = st.sidebar.slider("Minimum Credibility", 50, 100, 70)
-believer_filter = st.sidebar.selectbox("Believer/Non-Believer", ["All", "Believers", "Non-Believers"])
-search_keyword = st.sidebar.text_input("Search Testimonies")
+platforms = st.sidebar.multiselect(
+    "Filter by Platform", 
+    options=testimonies_df["platform"].unique(), 
+    default=list(testimonies_df["platform"].unique())
+)
+believers_only = st.sidebar.checkbox("Show Only Believers", value=False)
+non_believers_only = st.sidebar.checkbox("Show Only Non-Believers", value=False)
 
-# Filter testimonies
-filtered_testimonies = [
-    t for t in testimonies_data
-    if t["platform"] in selected_platform
-    and any(topic in t["title"] for topic in selected_topic)
-    and t["age_range"] in selected_age
-    and t["credibility_score"] >= min_credibility
-    and (believer_filter == "All" or (believer_filter == "Believers" and t["is_believer"]) or (believer_filter == "Non-Believers" and not t["is_believer"]))
-    and (search_keyword.lower() in t["title"].lower() or search_keyword.lower() in t["description"].lower())
-]
+filtered_df = testimonies_df[testimonies_df["platform"].isin(platforms)]
 
-# -----------------------------
-# HEADER
-# -----------------------------
-st.title("📊 Testimony Dashboard")
-st.markdown("Tracking prophetic visions, salvation stories, near-death experiences, and global Christian persecution.")
-st.caption("Auto-refreshes every 30 minutes. Real-time API integration ready.")
+if believers_only:
+    filtered_df = filtered_df[filtered_df["is_believer"] == True]
+elif non_believers_only:
+    filtered_df = filtered_df[filtered_df["is_believer"] == False]
 
-# -----------------------------
-# VISUALIZATIONS
-# -----------------------------
+# ======================
+# GRAPH: TESTIMONIES PER PLATFORM
+# ======================
+st.subheader("Testimonies Per Platform")
+testimony_counts = filtered_df.groupby("platform").size().reset_index(name="count")
+platform_chart = alt.Chart(testimony_counts).mark_bar().encode(
+    x=alt.X("platform", sort="-y"),
+    y="count",
+    tooltip=["platform", "count"]
+).properties(width=700)
+st.altair_chart(platform_chart, use_container_width=True)
 
-# Testimonies timeline
-df_testimonies = pd.DataFrame([{
-    "Date": t["timestamp"].date(),
-    "Platform": t["platform"]
-} for t in filtered_testimonies])
+# ======================
+# GRAPH: BELIEVER VS NON-BELIEVER PERCENTAGE
+# ======================
+st.subheader("Believer vs Non-Believer Testimonies")
+believer_counts = testimonies_df["is_believer"].value_counts().reset_index()
+believer_counts.columns = ["Believer", "Count"]
+believer_counts["Believer"] = believer_counts["Believer"].map({True: "Believers", False: "Non-Believers"})
 
-if not df_testimonies.empty:
-    timeline = df_testimonies.groupby(["Date", "Platform"]).size().reset_index(name="Count")
-    line_chart = alt.Chart(timeline).mark_line().encode(
-        x="Date:T",
-        y="Count:Q",
-        color="Platform:N"
-    ).properties(title="Testimonies Over Time", height=300)
-    st.altair_chart(line_chart, use_container_width=True)
+believer_chart = alt.Chart(believer_counts).mark_arc().encode(
+    theta="Count",
+    color="Believer",
+    tooltip=["Believer", "Count"]
+)
+st.altair_chart(believer_chart, use_container_width=True)
 
-# Believers vs Non-Believers
-believers_count = sum(1 for t in filtered_testimonies if t["is_believer"])
-non_believers_count = len(filtered_testimonies) - believers_count
+# ======================
+# GRAPH: GLOBAL PERSECUTION CASES (SIMULATED)
+# ======================
+st.subheader("Global Christian Persecution Cases (Simulated Data)")
+years = list(range(2015, datetime.now().year + 1))
+persecution_data = pd.DataFrame({
+    "year": years,
+    "cases": np.random.randint(1000, 5000, size=len(years)),
+    "percent_reported_online": np.random.uniform(30, 80, size=len(years))
+})
 
-st.subheader("Believers vs Non-Believers")
-st.bar_chart(pd.DataFrame({
-    "Count": [believers_count, non_believers_count]
-}, index=["Believers", "Non-Believers"]))
-
-# Persecution cases
-df_persecution = pd.DataFrame(persecution_data)
-persecution_chart = alt.Chart(df_persecution).mark_bar().encode(
-    x="year:O",
-    y="cases:Q",
-    tooltip=["cases", "online_percentage"]
-).properties(title="Global Christian Persecution Cases", height=300)
+persecution_chart = alt.Chart(persecution_data).mark_line(point=True).encode(
+    x="year",
+    y="cases",
+    tooltip=["year", "cases"]
+).properties(title="Persecution Cases per Year")
 st.altair_chart(persecution_chart, use_container_width=True)
 
-# -----------------------------
+st.write("Percentage of persecution cases reported online is simulated below.")
+perc_chart = alt.Chart(persecution_data).mark_line(color="red").encode(
+    x="year",
+    y="percent_reported_online",
+    tooltip=["year", "percent_reported_online"]
+)
+st.altair_chart(perc_chart, use_container_width=True)
+
+# ======================
 # TESTIMONY LIST
-# -----------------------------
-st.subheader("📜 Testimonies")
-
-if filtered_testimonies:
-    for testimony in filtered_testimonies:
-        with st.expander(f"{testimony['title']} ({testimony['platform']})"):
-            st.write(f"**Description:** {testimony['description']}")
-            st.write(f"**Age Range:** {testimony['age_range']}")
-            st.write(f"**Credibility Score:** {testimony['credibility_score']}%")
-            st.write(f"**Encouraging Comments:** {testimony['comment_ratio']}% | **Ridicule:** {testimony['ridicule_factor']}%")
-            st.write(f"**Believer:** {'Yes' if testimony['is_believer'] else 'No'}")
-            st.write(f"**Date:** {testimony['timestamp'].strftime('%Y-%m-%d')}")
-            st.markdown(f"[🔗 View Testimony]({testimony['source_url']})", unsafe_allow_html=True)
-else:
-    st.warning("No testimonies match the selected filters.")
-
-# -----------------------------
-# PERSECUTION LINKS
-# -----------------------------
-st.subheader("🌎 Christian Persecution Links")
-for entry in persecution_data:
-    st.write(f"**{entry['year']}** - {entry['cases']} cases ({entry['online_percentage']}% online)")
-    for link in entry["links"]:
-        st.markdown(f"[Read More]({link})", unsafe_allow_html=True)
+# ======================
+st.subheader("Latest Testimonies")
+for _, row in filtered_df.iterrows():
+    st.markdown(f"### {row['title']}")
+    st.markdown(f"- **Platform:** {row['platform']}")
+    st.markdown(f"- **Age Range:** {row['age_range']}")
+    st.markdown(f"- **Credibility Score:** {row['credibility_score']}%")
+    st.markdown(f"- **Description:** {row['description']}")
+    st.markdown(f"[View Testimony]({row['source_url']})", unsafe_allow_html=True)
     st.markdown("---")
+
+# ======================
+# FOOTER
+# ======================
+st.write("Data refreshes every 30 minutes. All links provided are user-submitted or collected via API integrations.")
