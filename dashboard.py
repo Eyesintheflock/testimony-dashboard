@@ -1,64 +1,86 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import random
+import altair as alt
+from datetime import datetime, timedelta
+
+# Simulated data generator
+def generate_data():
+    dates = pd.date_range(datetime.now() - timedelta(days=365 * 10), datetime.now(), freq='M')
+    data = {
+        'date': np.tile(dates, 3),
+        'category': np.repeat(['Prophetic Visions', 'Salvation Stories', 'Near-Death Experiences'], len(dates)),
+        'count': np.random.randint(10, 200, len(dates) * 3),
+    }
+    return pd.DataFrame(data)
+
+# Simulated testimony list with descriptions and credibility
+def generate_testimonies():
+    return [
+        {
+            "title": "Dream of Jesus Appearing in the Clouds",
+            "description": "A woman describes a vivid dream of Jesus calling believers home.",
+            "source": "YouTube",
+            "credibility": 87,
+            "url": "https://youtube.com/example1"
+        },
+        {
+            "title": "Former Atheist Finds Christ",
+            "description": "A man shares his testimony of salvation after years of disbelief.",
+            "source": "TikTok",
+            "credibility": 92,
+            "url": "https://tiktok.com/example2"
+        },
+        {
+            "title": "Near-Death Experience Confirms Heaven",
+            "description": "A testimony of a person clinically dead for 3 minutes who saw Jesus.",
+            "source": "Instagram",
+            "credibility": 95,
+            "url": "https://instagram.com/example3"
+        }
+    ]
 
 st.set_page_config(page_title="Testimony Dashboard", layout="wide")
 
-# Simulated Data Generator
-def generate_testimony_data():
-    platforms = ["YouTube", "TikTok", "Instagram", "X (Twitter)"]
-    categories = ["Prophetic Vision", "Salvation Testimony", "Near-Death Experience"]
-    testimonies = []
-    for i in range(30):
-        category = random.choice(categories)
-        score = random.randint(30, 100)
-        testimonies.append({
-            "title": f"{category} #{i+1}",
-            "platform": random.choice(platforms),
-            "description": f"A {category.lower()} shared recently, gaining traction on social media.",
-            "credibility": score,
-            "link": f"https://example.com/testimony/{i+1}",
-            "score_breakdown": {
-                "Content Consistency": random.randint(5, 25),
-                "Engagement Sentiment": random.randint(10, 30),
-                "Repost Verification": random.randint(5, 20),
-                "Historical Accuracy": random.randint(0, 15),
-                "Risk Factor": random.randint(0, 10),
-            }
-        })
-    return testimonies
+st.title("📊 Testimony Dashboard")
+st.write("Track prophetic visions, salvation stories, and near-death experiences over the last 10 years.")
 
-testimonies = generate_testimony_data()
+# Generate data
+df = generate_data()
+testimonies = generate_testimonies()
 
 # Sidebar filters
-st.sidebar.title("Filters")
-selected_category = st.sidebar.multiselect("Select Category", ["Prophetic Vision", "Salvation Testimony", "Near-Death Experience"], default=["Prophetic Vision"])
-min_credibility = st.sidebar.slider("Minimum Credibility Score", 0, 100, 50)
+st.sidebar.header("Filters")
+selected_category = st.sidebar.multiselect(
+    "Select Categories",
+    options=df['category'].unique(),
+    default=df['category'].unique()
+)
 
-# Filtered testimonies
-filtered_testimonies = [t for t in testimonies if t["credibility"] >= min_credibility and t["title"].split()[0] in selected_category]
+# Filter data
+filtered_df = df[df['category'].isin(selected_category)]
 
-# Dashboard Title
-st.title("Testimony Dashboard (Demo)")
-st.markdown("Tracking prophetic visions, salvations, and near-death experiences with credibility scoring.")
+# Altair Chart
+st.subheader("📈 Testimonies Over Time")
+chart = (
+    alt.Chart(filtered_df)
+    .mark_line(point=True)
+    .encode(
+        x="date:T",
+        y="count:Q",
+        color="category:N",
+        tooltip=["date:T", "category:N", "count:Q"]
+    )
+    .interactive()
+)
+st.altair_chart(chart, use_container_width=True)
 
-# Graph (Trend Simulation)
-st.subheader("Trend of Testimonies (Past 10 Years)")
-years = list(range(2015, 2025))
-data = {
-    "Prophetic Visions": np.random.randint(10, 100, len(years)),
-    "Salvation Testimonies": np.random.randint(10, 100, len(years)),
-    "Near-Death Experiences": np.random.randint(10, 100, len(years)),
-}
-df = pd.DataFrame(data, index=years)
-st.line_chart(df)
+# Testimony Previews
+st.subheader("📝 Testimony Previews")
+for t in testimonies:
+    with st.expander(f"{t['title']} (Credibility: {t['credibility']}%)"):
+        st.write(f"**Description:** {t['description']}")
+        st.write(f"**Source:** {t['source']}")
+        st.markdown(f"[Watch/Testimony Link]({t['url']})")
 
-# Testimony List
-st.subheader("Testimonies")
-for t in filtered_testimonies:
-    with st.expander(f"{t['title']} | {t['platform']} | Credibility: {t['credibility']}"):
-        st.write(t["description"])
-        st.markdown(f"[View Source]({t['link']})")
-        st.write("### Credibility Breakdown")
-        st.json(t["score_breakdown"])
+st.caption("Data auto-refresh planned every 30 minutes when connected to live feeds.")
