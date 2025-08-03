@@ -1,170 +1,155 @@
+import os
 import pandas as pd
+import numpy as np
 from googleapiclient.discovery import build
-import random
+import praw
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import nltk
 
-# ================================
-# Helper: Credibility Scoring
-# ================================
-def calculate_credibility(comment_sentiment, testimony_ratio):
-    """
-    Calculate credibility score:
-    - Sentiment: Positive vs negative comments.
-    - Testimony ratio: % of creator content that is testimony-related.
-    """
-    base_score = 50
+nltk.download("vader_lexicon")
+sia = SentimentIntensityAnalyzer()
 
-    # Sentiment weighting
-    sentiment_boost = (comment_sentiment * 30)  # up to +30 for very positive sentiment
-    testimony_boost = (testimony_ratio * 20)    # up to +20 for mostly testimony content
+# ===========================
+# YOUTUBE SCRAPER
+# ===========================
 
-    credibility_score = base_score + sentiment_boost + testimony_boost
-    return min(max(int(credibility_score), 0), 100)  # clamp between 0–100
-
-
-# ================================
-# YouTube Scraper (Real)
-# ================================
-def scrape_youtube_testimonies(api_key, search_query="Christian testimony"):
+def scrape_youtube_testimonies(api_key, query="Christian testimony", max_results=5):
     youtube = build("youtube", "v3", developerKey=api_key)
-    request = youtube.search().list(
-        q=search_query,
+    search_response = youtube.search().list(
+        q=query,
         part="snippet",
-        maxResults=10,
         type="video",
-        order="date"
-    )
-    response = request.execute()
+        maxResults=max_results
+    ).execute()
 
-    results = []
-    for item in response.get("items", []):
+    testimonies = []
+
+    for item in search_response["items"]:
         video_id = item["id"]["videoId"]
         title = item["snippet"]["title"]
         description = item["snippet"]["description"]
-        channel_id = item["snippet"]["channelId"]
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        channel = item["snippet"]["channelTitle"]
 
-        # Analyze comments sentiment
-        sentiment_score = analyze_youtube_comments(youtube, video_id)
+        comments = scrape_youtube_comments(api_key, video_id)
+        credibility_score = calculate_credibility_score(description, comments)
 
-        # Check creator posting behavior
-        testimony_ratio = analyze_channel_behavior(youtube, channel_id)
-
-        credibility_score = calculate_credibility(sentiment_score, testimony_ratio)
-
-        results.append({
+        testimonies.append({
             "title": title,
             "platform": "YouTube",
-            "age_range": "Unknown",  # Placeholder until NLP on description for age detection
-            "credibility_score": credibility_score,
+            "source_url": f"https://www.youtube.com/watch?v={video_id}",
             "description": description,
-            "is_believer": credibility_score > 60,
-            "source_url": video_url,
-            "latitude": 37.7749,
-            "longitude": -122.4194
+            "age_range": estimate_age_range(description),
+            "credibility_score": credibility_score,
+            "is_believer": detect_believer(description),
+            "comments": comments
         })
 
-    return results
+    return testimonies
 
 
-# ================================
-# Analyze YouTube Comments
-# ================================
-def analyze_youtube_comments(youtube, video_id):
-    """Return sentiment score from 0–1 based on comments."""
-    try:
-        request = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=20,
-            textFormat="plainText"
-        )
-        response = request.execute()
+def scrape_youtube_comments(api_key, video_id, max_comments=20):
+    youtube = build("youtube", "v3", developerKey=api_key)
+    comments = []
+    request = youtube.commentThreads().list(
+        part="snippet",
+        videoId=video_id,
+        maxResults=max_comments,
+        textFormat="plainText"
+    )
+    response = request.execute()
 
-        positive, negative = 0, 0
-        for item in response.get("items", []):
-            comment = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"].lower()
-            if any(word in comment for word in ["amazing", "praise", "thank", "blessed"]):
-                positive += 1
-            elif any(word in comment for word in ["fake", "liar", "clout", "scam"]):
-                negative += 1
+    for item in response.get("items", []):
+        comment = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
+        comments.append(comment)
 
-        total = positive + negative
-        return positive / total if total > 0 else 0.5  # neutral baseline
-
-    except:
-        return 0.5  # default neutral if API fails
+    return comments
 
 
-# ================================
-# Analyze Creator Channel Behavior
-# ================================
-def analyze_channel_behavior(youtube, channel_id):
-    """Check how much of a creator's content is testimony-related."""
-    try:
-        request = youtube.search().list(
-            channelId=channel_id,
-            part="snippet",
-            maxResults=10,
-            order="date"
-        )
-        response = request.execute()
+# ===========================
+# REDDIT SCRAPER
+# ===========================
 
-        testimony_videos = 0
-        for item in response.get("items", []):
-            title = item["snippet"]["title"].lower()
-            if any(keyword in title for keyword in ["testimony", "jesus", "vision", "rapture"]):
-                testimony_videos += 1
+def scrape_reddit_testimonies(client_id, client_secret, user_agent, subreddit="Christianity", limit=5):
+    reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent)
+    testimonies = []
 
-        return testimony_videos / 10  # 0–1 ratio
-    except:
-        return 0.5  # assume balanced if API fails
+    for submission in reddit.subreddit(subreddit).hot(limit=limit):
+        comments = scrape_reddit_comments(submission)
+        credibility_score = calculate_credibility_score(submission.title, comments)
+
+        testimonies.append({
+            "title": submission.title,
+            "platform": "Reddit",
+            "source_url": submission.url,
+            "description": submission.selftext[:300] + "...",
+            "age_range": "Unknown",
+            "credibility_score": credibility_score,
+            "is_believer": detect_believer(submission.title),
+            "comments": comments
+        })
+
+    return testimonies
 
 
-# ================================
-# TikTok Scraper (Placeholder)
-# ================================
+def scrape_reddit_comments(submission, max_comments=20):
+    submission.comments.replace_more(limit=0)
+    comments = []
+    for comment in submission.comments[:max_comments]:
+        comments.append(comment.body)
+    return comments
+
+
+# ===========================
+# TIKTOK SCRAPER (Placeholder)
+# ===========================
+
 def scrape_tiktok_testimonies():
+    # TikTok scraping requires an unofficial API or external service.
     return [
         {
             "title": "TikTok Testimony Example",
             "platform": "TikTok",
-            "age_range": "18-24",
+            "source_url": "https://www.tiktok.com/example",
+            "description": "Placeholder TikTok testimony",
+            "age_range": "18-25",
             "credibility_score": 75,
-            "description": "A short video testimony on TikTok.",
             "is_believer": True,
-            "source_url": "https://tiktok.com/example-testimony",
-            "latitude": 40.7128,
-            "longitude": -74.0060
+            "comments": ["Amazing!", "This blessed me!", "Praise God!"]
         }
     ]
 
 
-# ================================
-# Reddit Scraper (Placeholder)
-# ================================
-def scrape_reddit_testimonies():
-    return [
-        {
-            "title": "Reddit Testimony Example",
-            "platform": "Reddit",
-            "age_range": "35-44",
-            "credibility_score": 88,
-            "description": "Detailed testimony shared in r/Christianity.",
-            "is_believer": True,
-            "source_url": "https://reddit.com/example-testimony",
-            "latitude": 51.5074,
-            "longitude": -0.1278
-        }
-    ]
+# ===========================
+# HELPER FUNCTIONS
+# ===========================
+
+def calculate_credibility_score(description, comments):
+    sentiment_scores = [sia.polarity_scores(c)["compound"] for c in comments]
+    avg_sentiment = np.mean(sentiment_scores) if sentiment_scores else 0
+
+    positive_comments = sum(1 for s in sentiment_scores if s > 0.2)
+    negative_comments = sum(1 for s in sentiment_scores if s < -0.2)
+
+    ridicule_factor = (negative_comments / max(len(sentiment_scores), 1)) * 50
+    support_factor = (positive_comments / max(len(sentiment_scores), 1)) * 50
+
+    frequency_factor = 10 if "testimony" in description.lower() or "rapture" in description.lower() else 0
+
+    credibility_score = 50 + support_factor - ridicule_factor + frequency_factor
+    return max(0, min(100, credibility_score))
 
 
-# ================================
-# Combine All Sources
-# ================================
-def scrape_all_sources(api_key=None):
-    youtube_data = scrape_youtube_testimonies(api_key) if api_key else []
-    tiktok_data = scrape_tiktok_testimonies()
-    reddit_data = scrape_reddit_testimonies()
+def detect_believer(description):
+    keywords = ["Jesus", "God", "testimony", "faith", "salvation"]
+    return any(word.lower() in description.lower() for word in keywords)
 
-    all_data = youtube_data + tiktok_data + reddit_data
-    return pd.DataFrame(all_data)
+
+def estimate_age_range(description):
+    if "teen" in description.lower():
+        return "13-19"
+    elif "youth" in description.lower() or "college" in description.lower():
+        return "18-25"
+    elif "father" in description.lower() or "mother" in description.lower():
+        return "30-50"
+    else:
+        return "Unknown"
