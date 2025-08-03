@@ -1,11 +1,4 @@
-title,platform,age_range,credibility_score,description,source_url,is_believer
-"Jesus Appeared in My Dream","YouTube","25-34",92,"A vivid dream about Jesus' return and the rapture.","https://www.youtube.com/watch?v=abcd1234",True
-"Near Death Experience Led Me to Christ","TikTok","35-44",88,"Former atheist shares a powerful NDE testimony.","https://www.tiktok.com/@user/video/123456789",True
-"Prophetic Word for the Church","Instagram","45-54",85,"Prophetic vision connecting to Revelation.","https://www.instagram.com/reel/example/",True
-"Saved from Suicide","X","18-24",95,"Testimony of salvation after watching a Christian video.","https://x.com/example/status/123456789",True
-"Jesus Saved Me During Cardiac Arrest","YouTube","55-64",90,"Near-death vision of Jesus during resuscitation.","https://www.youtube.com/watch?v=wxyz5678",True
-"Mocking Turned to Belief","TikTok","25-34",80,"Skeptic mocked Christianity until an unexpected vision.","https://www.tiktok.com/@user/video/987654321",True
-"End Times Warning Dream","YouTube","18-24",89,"Dream warning about signs of Jesus' second coming.","https://www.youtube.com/watch?v=testdream123",True
-"Vision of Heaven","Instagram","35-44",93,"A breathtaking vision of heaven shared online.","https://www.instagram.com/reel/example2/",True
-"Atheist Saw Hell and Repented","X","25-34",96,"A near-death hell experience that led to salvation.","https://x.com/example/status/987654321",False
-"Persecution Testimony from China","YouTube","45-54",85,"Believer shares persecution story and God's faithfulness.","https://www.youtube.com/watch?v=chinafaith",True
+title,platform,is_believer,credibility_score,description,source_url,age_range,latitude,longitude
+Heaven Vision,TikTok,True,92,"Saw vision of heaven and came to Christ",https://tiktok.com/example,25-34,37.7749,-122.4194
+Near-Death Experience,YouTube,False,88,"Atheist sees Jesus during NDE",https://youtube.com/example,35-44,34.0522,-118.2437
+Rapture Dream,Reddit,True,75,"Dream about rapture and end times",https://reddit.com/example,18-24,51.5074,-0.1278
