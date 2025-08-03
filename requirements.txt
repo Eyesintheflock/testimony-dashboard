@@ -3,6 +3,6 @@ pandas
 altair
 pydeck
 requests
-praw
 textblob
-beautifulsoup4
+praw
+google-api-python-client
