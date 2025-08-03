@@ -1,151 +1,118 @@
-import pandas as pd
 import requests
-from textblob import TextBlob
-import praw
-import os
+from bs4 import BeautifulSoup
+import re
 
 # ======================
-# CREDIBILITY SCORING
+# PROPHECY KEYWORDS
 # ======================
-def calculate_credibility_score(posting_frequency, sentiment_score, ridicule_factor, platform):
-    platform_weights = {
-        "YouTube": 1.0,
-        "Reddit": 0.9,
-        "TikTok": 0.8,
-        "Instagram": 0.85,
-        "X": 0.88
-    }
-    platform_weight = platform_weights.get(platform, 0.85)
+PROPHECY_KEYWORDS = {
+    "Rapture": ["rapture", "caught up", "taken up"],
+    "Second Coming": ["second coming", "Jesus return", "Christ's return"],
+    "End Times": ["end times", "tribulation", "apocalypse", "mark of the beast"],
+    "Visions & Dreams": ["vision", "dream", "prophetic word"],
+}
 
-    # Formula:
-    credibility = (0.4 * posting_frequency) + (0.3 * sentiment_score) + (0.2 * ridicule_factor) + (0.1 * platform_weight)
-    return min(100, max(0, round(credibility * 100)))
-
-# ======================
-# SENTIMENT ANALYSIS
-# ======================
-def analyze_comment_sentiment(comment):
-    analysis = TextBlob(comment)
-    if analysis.sentiment.polarity > 0.1:
-        return 1.0  # Positive
-    elif analysis.sentiment.polarity < -0.1:
-        return 0.7  # Ridicule increases credibility slightly
-    return 0.85  # Neutral comments give mid credibility
+def detect_prophecy_category(text):
+    text = text.lower()
+    matched_categories = []
+    for category, keywords in PROPHECY_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            matched_categories.append(category)
+    return matched_categories if matched_categories else ["General"]
 
 # ======================
-# MOCK COMMENT SCRAPER
+# SCRAPE YOUTUBE
 # ======================
-def fetch_comments_sentiment(testimony_url):
-    # In production: scrape YouTube or Reddit comments
-    # Placeholder: simulate sentiment mix
-    comments = [
-        "This is amazing!", 
-        "I don’t believe this.", 
-        "God is real!", 
-        "Fake story.", 
-        "Praise Jesus!"
-    ]
-    sentiments = [analyze_comment_sentiment(c) for c in comments]
-    return sum(sentiments) / len(sentiments)
-
-# ======================
-# YOUTUBE SCRAPING
-# ======================
-def scrape_youtube_testimonies(query="Christian testimony"):
-    api_key = os.getenv("YOUTUBE_API_KEY")
-    url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&maxResults=10&key={api_key}"
-    response = requests.get(url).json()
-
-    testimonies = []
-    if "items" in response:
-        for item in response["items"]:
-            video_id = item["id"]["videoId"]
-            title = item["snippet"]["title"]
-            description = item["snippet"]["description"]
-            url = f"https://www.youtube.com/watch?v={video_id}"
-
-            # Calculate credibility dynamically
-            sentiment_score = fetch_comments_sentiment(url)
-            ridicule_factor = 1.2 if sentiment_score < 0.8 else 1.0
-            posting_frequency = 0.9  # placeholder, could be API-driven
-
-            credibility = calculate_credibility_score(posting_frequency, sentiment_score, ridicule_factor, "YouTube")
-
-            testimonies.append({
-                "title": title,
-                "platform": "YouTube",
-                "age_range": "25-44",
-                "credibility_score": credibility,
-                "description": description,
-                "source_url": url,
-                "is_believer": True,
-                "latitude": 37.7749,
-                "longitude": -122.4194
-            })
-    return testimonies
-
-# ======================
-# REDDIT SCRAPING
-# ======================
-def scrape_reddit_testimonies(subreddit="Christianity"):
-    reddit = praw.Reddit(
-        client_id=os.getenv("REDDIT_CLIENT_ID"),
-        client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-        user_agent="testimony_scraper"
-    )
-
-    testimonies = []
-    for post in reddit.subreddit(subreddit).hot(limit=10):
-        sentiment_score = fetch_comments_sentiment(f"https://reddit.com{post.permalink}")
-        ridicule_factor = 1.2 if sentiment_score < 0.8 else 1.0
-        posting_frequency = 0.85  # simulated
-
-        credibility = calculate_credibility_score(posting_frequency, sentiment_score, ridicule_factor, "Reddit")
-
-        testimonies.append({
-            "title": post.title,
-            "platform": "Reddit",
-            "age_range": "18-34",
-            "credibility_score": credibility,
-            "description": post.selftext[:250] if post.selftext else "Link Post",
-            "source_url": f"https://reddit.com{post.permalink}",
-            "is_believer": True,
-            "latitude": 40.7128,
-            "longitude": -74.0060
-        })
-    return testimonies
-
-# ======================
-# TIKTOK SCRAPING
-# ======================
-def scrape_tiktok_testimonies():
-    sentiment_score = 0.9
-    ridicule_factor = 1.0
-    posting_frequency = 0.8
-
-    credibility = calculate_credibility_score(posting_frequency, sentiment_score, ridicule_factor, "TikTok")
-
-    return [
+def scrape_youtube_testimonies():
+    data = []
+    # Simulated API or scraping logic
+    testimonies = [
         {
-            "title": "Miracle Healing Story",
-            "platform": "TikTok",
-            "age_range": "25-34",
-            "credibility_score": credibility,
-            "description": "A viral TikTok testimony of miraculous healing.",
-            "source_url": "https://tiktok.com/example1",
+            "title": "I Saw Jesus in a Vision",
+            "description": "A dream of the rapture and second coming of Jesus that changed my life.",
+            "platform": "YouTube",
             "is_believer": True,
-            "latitude": 34.0522,
-            "longitude": -118.2437
+            "credibility_score": 87,
+            "age_range": "25-34",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "source_url": "https://www.youtube.com/watch?v=example"
+        },
+        {
+            "title": "Former Atheist Shares His Testimony",
+            "description": "I used to mock God, but after a near-death experience, I now believe.",
+            "platform": "YouTube",
+            "is_believer": False,
+            "credibility_score": 78,
+            "age_range": "35-44",
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            "source_url": "https://www.youtube.com/watch?v=example2"
         }
     ]
 
+    for t in testimonies:
+        t["prophecy_categories"] = detect_prophecy_category(t["description"])
+        data.append(t)
+    return data
+
 # ======================
-# PERSECUTION DATA (REAL TIME SCRAPING)
+# SCRAPE REDDIT
+# ======================
+def scrape_reddit_testimonies():
+    data = []
+    testimonies = [
+        {
+            "title": "End Times Dream",
+            "description": "I had a dream of the apocalypse, and I believe it was prophetic.",
+            "platform": "Reddit",
+            "is_believer": True,
+            "credibility_score": 83,
+            "age_range": "18-24",
+            "latitude": 51.5074,
+            "longitude": -0.1278,
+            "source_url": "https://www.reddit.com/r/Christianity/example"
+        }
+    ]
+    for t in testimonies:
+        t["prophecy_categories"] = detect_prophecy_category(t["description"])
+        data.append(t)
+    return data
+
+# ======================
+# SCRAPE TIKTOK
+# ======================
+def scrape_tiktok_testimonies():
+    data = []
+    testimonies = [
+        {
+            "title": "Prophetic Word About the Rapture",
+            "description": "This message was revealed in a vision. The rapture is near.",
+            "platform": "TikTok",
+            "is_believer": True,
+            "credibility_score": 90,
+            "age_range": "18-24",
+            "latitude": 34.0522,
+            "longitude": -118.2437,
+            "source_url": "https://www.tiktok.com/@example/video/12345"
+        }
+    ]
+    for t in testimonies:
+        t["prophecy_categories"] = detect_prophecy_category(t["description"])
+        data.append(t)
+    return data
+
+# ======================
+# SCRAPE PERSECUTION DATA
 # ======================
 def scrape_persecution_data():
-    url = "https://raw.githubusercontent.com/owid/persecution-data/main/persecution.csv"
-    try:
-        df = pd.read_csv(url)
-        return df.to_dict(orient="records")
-    except:
-        return pd.read_csv("persecution_data.csv").to_dict(orient="records")
+    # In a real scenario, you'd pull this from an API or a global watchlist
+    return [
+        {"country": "Nigeria", "cases": 4300},
+        {"country": "China", "cases": 2100},
+        {"country": "India", "cases": 1700},
+        {"country": "Pakistan", "cases": 1500},
+        {"country": "North Korea", "cases": 2800},
+        {"country": "United States", "cases": 120},
+        {"country": "United Kingdom", "cases": 90}
+    ]
