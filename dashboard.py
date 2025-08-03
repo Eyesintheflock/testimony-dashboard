@@ -3,123 +3,122 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from datetime import datetime
+import time
 
 st.set_page_config(page_title="Testimony Dashboard", layout="wide")
 
-# ======================
-# LOAD DATA
-# ======================
+# ----------------------------------------
+# Data Loading Functions
+# ----------------------------------------
 @st.cache_data(ttl=1800)  # Refresh every 30 mins
 def load_testimonies():
     return pd.read_csv("testimonies.csv")
 
+@st.cache_data(ttl=1800)
+def load_persecution_data():
+    return pd.read_csv("persecution_data.csv")
+
 testimonies_df = load_testimonies()
+persecution_data = load_persecution_data()
 
-# ======================
-# CREDIBILITY SCORING FUNCTION
-# ======================
-def calculate_credibility(row):
-    base = row["credibility_score"]
+# ----------------------------------------
+# Page Title
+# ----------------------------------------
+st.title("Global Testimony Dashboard with Real-Time Updates")
 
-    # Sentiment weight
-    if row["comment_sentiment"] == "encouraging":
-        base += 5
-    elif row["comment_sentiment"] == "ridicule":
-        base += 10  # ridicule implies risk, which may increase credibility
-    elif row["comment_sentiment"] == "mixed":
-        base += 2
-
-    # Posting behavior weight
-    if row["post_frequency"] == "normal":
-        base += 3
-    elif row["post_frequency"] == "rare":
-        base += 7  # rare posts about testimonies seem more genuine
-    else:
-        base -= 5  # too frequent may indicate clickbait
-
-    return min(base, 100)  # cap at 100%
-
-# Apply credibility score dynamically
-testimonies_df["credibility_score"] = testimonies_df.apply(calculate_credibility, axis=1)
-
-st.title("Testimony Dashboard (Real-Time & Interactive)")
-st.write("Explore prophetic dreams, visions, near-death experiences, salvation testimonies, and Christian persecution trends.")
-
-# ======================
-# FILTERS
-# ======================
-st.sidebar.header("Filters")
-platforms = st.sidebar.multiselect(
-    "Filter by Platform", 
-    options=testimonies_df["platform"].unique(), 
-    default=list(testimonies_df["platform"].unique())
+# ----------------------------------------
+# Filters
+# ----------------------------------------
+platforms = st.multiselect(
+    "Filter by Platform",
+    options=testimonies_df['platform'].unique(),
+    default=list(testimonies_df['platform'].unique())
 )
-believers_only = st.sidebar.checkbox("Show Only Believers", value=False)
-non_believers_only = st.sidebar.checkbox("Show Only Non-Believers", value=False)
+believers_only = st.checkbox("Show Only Believers", value=False)
+show_labels = st.checkbox("Show data labels on charts", value=True)
 
 filtered_df = testimonies_df[testimonies_df["platform"].isin(platforms)]
-
 if believers_only:
     filtered_df = filtered_df[filtered_df["is_believer"] == True]
-elif non_believers_only:
-    filtered_df = filtered_df[filtered_df["is_believer"] == False]
 
-# ======================
-# GRAPH: TESTIMONIES PER PLATFORM
-# ======================
+# ----------------------------------------
+# Testimonies Per Platform Chart
+# ----------------------------------------
 st.subheader("Testimonies Per Platform")
 testimony_counts = filtered_df.groupby("platform").size().reset_index(name="count")
+
 platform_chart = alt.Chart(testimony_counts).mark_bar().encode(
-    x=alt.X("platform", sort="-y"),
-    y="count",
+    x=alt.X("platform:N", title="Platform"),
+    y=alt.Y("count:Q", title="Number of Testimonies"),
+    color="platform:N",
     tooltip=["platform", "count"]
-).properties(width=700)
-st.altair_chart(platform_chart, use_container_width=True)
-
-# ======================
-# GRAPH: BELIEVER VS NON-BELIEVER PERCENTAGE
-# ======================
-st.subheader("Believer vs Non-Believer Testimonies")
-believer_counts = testimonies_df["is_believer"].value_counts().reset_index()
-believer_counts.columns = ["Believer", "Count"]
-believer_counts["Believer"] = believer_counts["Believer"].map({True: "Believers", False: "Non-Believers"})
-
-believer_chart = alt.Chart(believer_counts).mark_arc().encode(
-    theta="Count",
-    color="Believer",
-    tooltip=["Believer", "Count"]
 )
-st.altair_chart(believer_chart, use_container_width=True)
 
-# ======================
-# GRAPH: GLOBAL PERSECUTION CASES (SIMULATED)
-# ======================
-st.subheader("Global Christian Persecution Cases (Simulated Data)")
-years = list(range(2015, datetime.now().year + 1))
-persecution_data = pd.DataFrame({
-    "year": years,
-    "cases": np.random.randint(1000, 5000, size=len(years)),
-    "percent_reported_online": np.random.uniform(30, 80, size=len(years))
-})
+if show_labels:
+    text_labels = alt.Chart(testimony_counts).mark_text(dy=-10).encode(
+        x="platform:N",
+        y="count:Q",
+        text=alt.Text("count:Q"),
+        color="platform:N"
+    )
+    st.altair_chart(platform_chart + text_labels, use_container_width=True)
+else:
+    st.altair_chart(platform_chart, use_container_width=True)
 
+# ----------------------------------------
+# Believers vs Non-Believers Credibility
+# ----------------------------------------
+st.subheader("Believers vs. Non-Believers Credibility Comparison")
+believer_comparison = filtered_df.groupby(["platform", "is_believer"])["credibility_score"].mean().reset_index(name="avg_credibility")
+
+credibility_chart = alt.Chart(believer_comparison).mark_line(point=True).encode(
+    x="platform:N",
+    y="avg_credibility:Q",
+    color="is_believer:N",
+    tooltip=["platform", "avg_credibility", "is_believer"]
+)
+
+if show_labels:
+    text_labels = credibility_chart.mark_text(align="left", dx=5, dy=-5).encode(
+        text=alt.Text("avg_credibility:Q", format=".1f"),
+        color="is_believer:N"
+    )
+    st.altair_chart(credibility_chart + text_labels, use_container_width=True)
+else:
+    st.altair_chart(credibility_chart, use_container_width=True)
+
+# ----------------------------------------
+# Global Persecution Graph
+# ----------------------------------------
+st.subheader("Global Christian Persecution Cases")
 persecution_chart = alt.Chart(persecution_data).mark_line(point=True).encode(
-    x="year",
-    y="cases",
-    tooltip=["year", "cases"]
-).properties(title="Persecution Cases per Year")
-st.altair_chart(persecution_chart, use_container_width=True)
-
-st.write("Percentage of persecution cases reported online is simulated below.")
-perc_chart = alt.Chart(persecution_data).mark_line(color="red").encode(
-    x="year",
-    y="percent_reported_online",
-    tooltip=["year", "percent_reported_online"]
+    x="year:O",
+    y="cases:Q",
+    color="region:N",
+    tooltip=["year", "cases", "region"]
 )
-st.altair_chart(perc_chart, use_container_width=True)
 
-# ======================
-# TESTIMONY LIST
-# ======================
+if show_labels:
+    text_labels = persecution_chart.mark_text(align="left", dx=5, dy=-5).encode(
+        text=alt.Text("cases:Q"),
+        color="region:N"
+    )
+    st.altair_chart(persecution_chart + text_labels, use_container_width=True)
+else:
+    st.altair_chart(persecution_chart, use_container_width=True)
+
+# ----------------------------------------
+# Global Testimony Map
+# ----------------------------------------
+st.subheader("Global Map of Testimonies")
+if "latitude" in filtered_df.columns and "longitude" in filtered_df.columns:
+    st.map(filtered_df[["latitude", "longitude"]], zoom=1)
+else:
+    st.warning("No geolocation data available for testimonies.")
+
+# ----------------------------------------
+# Testimony Listings
+# ----------------------------------------
 st.subheader("Latest Testimonies")
 for _, row in filtered_df.iterrows():
     st.markdown(f"### {row['title']}")
@@ -130,7 +129,21 @@ for _, row in filtered_df.iterrows():
     st.markdown(f"[View Testimony]({row['source_url']})", unsafe_allow_html=True)
     st.markdown("---")
 
-# ======================
-# FOOTER
-# ======================
-st.write("Data refreshes every 30 minutes. Credibility is calculated based on sentiment, posting behavior, and risk factors.")
+# ----------------------------------------
+# Comparison: Non-Believers vs Believers Count
+# ----------------------------------------
+st.subheader("Testimony Count Comparison (Believers vs. Non-Believers)")
+belief_comparison = filtered_df.groupby(["platform", "is_believer"]).size().reset_index(name="count")
+
+belief_chart = alt.Chart(belief_comparison).mark_bar().encode(
+    x="platform:N",
+    y="count:Q",
+    color="is_believer:N",
+    tooltip=["platform", "is_believer", "count"]
+)
+st.altair_chart(belief_chart, use_container_width=True)
+
+# ----------------------------------------
+# Refresh Time
+# ----------------------------------------
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
