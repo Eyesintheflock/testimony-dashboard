@@ -1,59 +1,93 @@
+import pandas as pd
 import requests
 from textblob import TextBlob
+import praw
+import os
 
-def scrape_youtube_testimonies(api_key, geocode_key):
-    # Replace with actual API calls (dummy for now)
-    return [{
-        "title": "Healing Testimony",
-        "platform": "YouTube",
-        "is_believer": True,
-        "age_range": "25-34",
-        "credibility_score": 70,
-        "description": "Miraculous healing story.",
-        "source_url": "https://youtube.com/watch?v=dummy",
-        "latitude": 34.0522,
-        "longitude": -118.2437,
-        "comments": ["Inspiring!", "I believe you!", "Skeptical but hopeful."]
-    }]
+# ======================
+# YOUTUBE SCRAPING (REAL)
+# ======================
+def scrape_youtube_testimonies(query="Christian testimony"):
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&maxResults=10&key={api_key}"
+    response = requests.get(url).json()
 
-def scrape_reddit_testimonies(client_id, client_secret, user_agent, geocode_key):
-    return [{
-        "title": "Dream About Jesus",
-        "platform": "Reddit",
-        "is_believer": False,
-        "age_range": "18-24",
-        "credibility_score": 60,
-        "description": "Life-changing dream shared.",
-        "source_url": "https://reddit.com/r/testimonies/dummy",
-        "latitude": 51.5074,
-        "longitude": -0.1278,
-        "comments": ["Interesting read.", "This is wild!", "Not sure but I want to believe."]
-    }]
+    testimonies = []
+    if "items" in response:
+        for item in response["items"]:
+            video_id = item["id"]["videoId"]
+            title = item["snippet"]["title"]
+            description = item["snippet"]["description"]
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            testimonies.append({
+                "title": title,
+                "platform": "YouTube",
+                "age_range": "25-44",
+                "credibility_score": 85,
+                "description": description,
+                "source_url": url,
+                "is_believer": True,
+                "latitude": 37.7749,
+                "longitude": -122.4194
+            })
+    return testimonies
 
-def scrape_tiktok_testimonies(geocode_key):
-    return [{
-        "title": "Near Death Experience",
-        "platform": "TikTok",
-        "is_believer": True,
-        "age_range": "35-44",
-        "credibility_score": 65,
-        "description": "A vision after near-death.",
-        "source_url": "https://tiktok.com/@user/video/dummy",
-        "latitude": 40.7128,
-        "longitude": -74.0060,
-        "comments": ["Amazing!", "This happened to me too!", "Sounds fake."]
-    }]
+# ======================
+# REDDIT SCRAPING (REAL)
+# ======================
+def scrape_reddit_testimonies(subreddit="Christianity"):
+    reddit = praw.Reddit(
+        client_id=os.getenv("REDDIT_CLIENT_ID"),
+        client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+        user_agent="testimony_scraper"
+    )
 
-def scrape_persecution_data(geocode_key):
-    return [{
-        "country": "Nigeria",
-        "latitude": 9.0820,
-        "longitude": 8.6753,
-        "source_url": "https://opendoors.org/en/persecution/nigeria"
-    }]
+    testimonies = []
+    for post in reddit.subreddit(subreddit).hot(limit=10):
+        testimonies.append({
+            "title": post.title,
+            "platform": "Reddit",
+            "age_range": "18-34",
+            "credibility_score": 80,
+            "description": post.selftext[:250] if post.selftext else "Link Post",
+            "source_url": f"https://reddit.com{post.permalink}",
+            "is_believer": True,
+            "latitude": 40.7128,
+            "longitude": -74.0060
+        })
+    return testimonies
 
-def analyze_comment_sentiment(comments):
-    if not comments:
-        return 0
-    total_sentiment = sum(TextBlob(comment).sentiment.polarity for comment in comments)
-    return total_sentiment / len(comments)
+# ======================
+# TIKTOK (PLACEHOLDER)
+# ======================
+def scrape_tiktok_testimonies():
+    return [
+        {
+            "title": "Miracle Healing Story",
+            "platform": "TikTok",
+            "age_range": "25-34",
+            "credibility_score": 95,
+            "description": "A viral TikTok testimony of miraculous healing.",
+            "source_url": "https://tiktok.com/example1",
+            "is_believer": True,
+            "latitude": 34.0522,
+            "longitude": -118.2437
+        }
+    ]
+
+# ======================
+# SENTIMENT ANALYSIS
+# ======================
+def analyze_comment_sentiment(comment):
+    analysis = TextBlob(comment)
+    if analysis.sentiment.polarity > 0.1:
+        return "Positive"
+    elif analysis.sentiment.polarity < -0.1:
+        return "Negative"
+    return "Neutral"
+
+# ======================
+# PERSECUTION DATA LOADER
+# ======================
+def scrape_persecution_data_from_csv():
+    return pd.read_csv("persecution_data.csv").to_dict(orient="records")
