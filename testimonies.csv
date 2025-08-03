@@ -1,4 +1,4 @@
-title,platform,is_believer,credibility_score,description,source_url,age_range,latitude,longitude
-Heaven Vision,TikTok,True,92,"Saw vision of heaven and came to Christ",https://tiktok.com/example,25-34,37.7749,-122.4194
-Near-Death Experience,YouTube,False,88,"Atheist sees Jesus during NDE",https://youtube.com/example,35-44,34.0522,-118.2437
-Rapture Dream,Reddit,True,75,"Dream about rapture and end times",https://reddit.com/example,18-24,51.5074,-0.1278
+title,platform,is_believer,age_range,credibility_score,description,source_url,latitude,longitude
+Healing Testimony,YouTube,True,25-34,70,Miraculous healing story,https://youtube.com/watch?v=dummy,34.0522,-118.2437
+Dream About Jesus,Reddit,False,18-24,60,Life-changing dream shared,https://reddit.com/r/testimonies/dummy,51.5074,-0.1278
+Near Death Experience,TikTok,True,35-44,65,A vision after near-death,https://tiktok.com/@user/video/dummy,40.7128,-74.0060
