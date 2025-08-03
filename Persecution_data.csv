@@ -1,7 +1,50 @@
-year,region,cases
-2021,Africa,3500
-2021,Asia,2700
-2021,Middle East,4000
-2022,Africa,3700
-2022,Asia,3000
-2022,Middle East,4200
+country,latitude,longitude,source_url
+North Korea,40.3399,127.5101,https://www.opendoors.org/en-US/persecution/countries/north-korea
+Somalia,2.0469,45.3182,https://www.opendoors.org/en-US/persecution/countries/somalia
+Yemen,15.5527,48.5164,https://www.opendoors.org/en-US/persecution/countries/yemen
+Libya,26.3351,17.2283,https://www.opendoors.org/en-US/persecution/countries/libya
+Sudan,12.8628,30.2176,https://www.opendoors.org/en-US/persecution/countries/sudan
+Eritrea,15.1794,39.7823,https://www.opendoors.org/en-US/persecution/countries/eritrea
+Nigeria,9.0820,8.6753,https://www.opendoors.org/en-US/persecution/countries/nigeria
+Pakistan,30.3753,69.3451,https://www.opendoors.org/en-US/persecution/countries/pakistan
+Iran,32.4279,53.6880,https://www.opendoors.org/en-US/persecution/countries/iran
+Afghanistan,33.9391,67.7100,https://www.opendoors.org/en-US/persecution/countries/afghanistan
+India,20.5937,78.9629,https://www.opendoors.org/en-US/persecution/countries/india
+Syria,34.8021,38.9968,https://www.opendoors.org/en-US/persecution/countries/syria
+Saudi Arabia,23.8859,45.0792,https://www.opendoors.org/en-US/persecution/countries/saudi-arabia
+Mali,17.5707,3.9962,https://www.opendoors.org/en-US/persecution/countries/mali
+Algeria,28.0339,1.6596,https://www.opendoors.org/en-US/persecution/countries/algeria
+Iraq,33.2232,43.6793,https://www.opendoors.org/en-US/persecution/countries/iraq
+Myanmar,21.9162,95.9560,https://www.opendoors.org/en-US/persecution/countries/myanmar
+China,35.8617,104.1954,https://www.opendoors.org/en-US/persecution/countries/china
+Burkina Faso,12.2383,-1.5616,https://www.opendoors.org/en-US/persecution/countries/burkina-faso
+Laos,19.8563,102.4955,https://www.opendoors.org/en-US/persecution/countries/laos
+Cuba,21.5218,-77.7812,https://www.opendoors.org/en-US/persecution/countries/cuba
+Mauritania,21.0079,-10.9408,https://www.opendoors.org/en-US/persecution/countries/mauritania
+Morocco,31.7917,-7.0926,https://www.opendoors.org/en-US/persecution/countries/morocco
+Uzbekistan,41.3775,64.5853,https://www.opendoors.org/en-US/persecution/countries/uzbekistan
+Bangladesh,23.6850,90.3563,https://www.opendoors.org/en-US/persecution/countries/bangladesh
+Niger,17.6078,8.0817,https://www.opendoors.org/en-US/persecution/countries/niger
+CAR,6.6111,20.9394,https://www.opendoors.org/en-US/persecution/countries/central-african-republic
+Turkmenistan,38.9697,59.5563,https://www.opendoors.org/en-US/persecution/countries/turkmenistan
+Nicaragua,12.8654,-85.2072,https://www.opendoors.org/en-US/persecution/countries/nicaragua
+Oman,21.5126,55.9233,https://www.opendoors.org/en-US/persecution/countries/oman
+Ethiopia,9.1450,40.4897,https://www.opendoors.org/en-US/persecution/countries/ethiopia
+Tunisia,33.8869,9.5375,https://www.opendoors.org/en-US/persecution/countries/tunisia
+Colombia,4.5709,-74.2973,https://www.opendoors.org/en-US/persecution/countries/colombia
+Vietnam,14.0583,108.2772,https://www.opendoors.org/en-US/persecution/countries/vietnam
+Bhutan,27.5142,90.4336,https://www.opendoors.org/en-US/persecution/countries/bhutan
+Mexico,23.6345,-102.5528,https://www.opendoors.org/en-US/persecution/countries/mexico
+Egypt,26.8206,30.8025,https://www.opendoors.org/en-US/persecution/countries/egypt
+Mozambique,-18.6657,35.5296,https://www.opendoors.org/en-US/persecution/countries/mozambique
+Qatar,25.3548,51.1839,https://www.opendoors.org/en-US/persecution/countries/qatar
+Congo DR,-4.0383,21.7587,https://www.opendoors.org/en-US/persecution/countries/congo-dr
+Indonesia,-0.7893,113.9213,https://www.opendoors.org/en-US/persecution/countries/indonesia
+Cameroon,7.3697,12.3547,https://www.opendoors.org/en-US/persecution/countries/cameroon
+Brunei,4.5353,114.7277,https://www.opendoors.org/en-US/persecution/countries/brunei
+Comoros,-11.6455,43.3333,https://www.opendoors.org/en-US/persecution/countries/comoros
+Tajikistan,38.8610,71.2761,https://www.opendoors.org/en-US/persecution/countries/tajikistan
+Kazakhstan,48.0196,66.9237,https://www.opendoors.org/en-US/persecution/countries/kazakhstan
+Jordan,30.5852,36.2384,https://www.opendoors.org/en-US/persecution/countries/jordan
+Malaysia,4.2105,101.9758,https://www.opendoors.org/en-US/persecution/countries/malaysia
+Turkey,38.9637,35.2433,https://www.opendoors.org/en-US/persecution/countries/turkey
