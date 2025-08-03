@@ -1,62 +1,64 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
-from datetime import datetime, timedelta
+import random
 
-# ---- PAGE CONFIG ----
 st.set_page_config(page_title="Testimony Dashboard", layout="wide")
 
-# ---- TITLE ----
-st.title("📊 Testimony Dashboard")
-st.write("Track prophetic visions, salvation stories, and near-death experiences across major platforms (YouTube, X, TikTok, Instagram).")
+# Simulated Data Generator
+def generate_testimony_data():
+    platforms = ["YouTube", "TikTok", "Instagram", "X (Twitter)"]
+    categories = ["Prophetic Vision", "Salvation Testimony", "Near-Death Experience"]
+    testimonies = []
+    for i in range(30):
+        category = random.choice(categories)
+        score = random.randint(30, 100)
+        testimonies.append({
+            "title": f"{category} #{i+1}",
+            "platform": random.choice(platforms),
+            "description": f"A {category.lower()} shared recently, gaining traction on social media.",
+            "credibility": score,
+            "link": f"https://example.com/testimony/{i+1}",
+            "score_breakdown": {
+                "Content Consistency": random.randint(5, 25),
+                "Engagement Sentiment": random.randint(10, 30),
+                "Repost Verification": random.randint(5, 20),
+                "Historical Accuracy": random.randint(0, 15),
+                "Risk Factor": random.randint(0, 10),
+            }
+        })
+    return testimonies
 
-# ---- DATE RANGE ----
-st.sidebar.header("Filters")
-years = st.sidebar.slider("Select years to view", 1, 10, 2)
-start_date = datetime.now() - timedelta(days=365 * years)
+testimonies = generate_testimony_data()
 
-# ---- SIMULATED DATA GENERATION ----
-np.random.seed(42)
-dates = pd.date_range(start=start_date, end=datetime.now(), freq="W")
-data = pd.DataFrame({
-    "date": dates,
-    "prophetic_visions": np.random.randint(20, 200, len(dates)),
-    "salvation_stories": np.random.randint(30, 250, len(dates)),
-    "near_death_experiences": np.random.randint(10, 100, len(dates))
-})
+# Sidebar filters
+st.sidebar.title("Filters")
+selected_category = st.sidebar.multiselect("Select Category", ["Prophetic Vision", "Salvation Testimony", "Near-Death Experience"], default=["Prophetic Vision"])
+min_credibility = st.sidebar.slider("Minimum Credibility Score", 0, 100, 50)
 
-# Add credibility ranking based on comments & shares (simulated)
-data["credibility_score"] = np.random.uniform(0.5, 5.0, len(dates))
+# Filtered testimonies
+filtered_testimonies = [t for t in testimonies if t["credibility"] >= min_credibility and t["title"].split()[0] in selected_category]
 
-# ---- CHARTS ----
-st.subheader("📈 Trends Over Time")
-trend_chart = alt.Chart(data).transform_fold(
-    ["prophetic_visions", "salvation_stories", "near_death_experiences"],
-    as_=["category", "count"]
-).mark_line().encode(
-    x="date:T",
-    y="count:Q",
-    color="category:N",
-    tooltip=["date:T", "category:N", "count:Q"]
-).interactive()
+# Dashboard Title
+st.title("Testimony Dashboard (Demo)")
+st.markdown("Tracking prophetic visions, salvations, and near-death experiences with credibility scoring.")
 
-st.altair_chart(trend_chart, use_container_width=True)
+# Graph (Trend Simulation)
+st.subheader("Trend of Testimonies (Past 10 Years)")
+years = list(range(2015, 2025))
+data = {
+    "Prophetic Visions": np.random.randint(10, 100, len(years)),
+    "Salvation Testimonies": np.random.randint(10, 100, len(years)),
+    "Near-Death Experiences": np.random.randint(10, 100, len(years)),
+}
+df = pd.DataFrame(data, index=years)
+st.line_chart(df)
 
-# ---- CREDIBILITY RANKINGS ----
-st.subheader("🏆 Credibility Rankings")
-cred_chart = alt.Chart(data).mark_bar().encode(
-    x="date:T",
-    y="credibility_score:Q",
-    tooltip=["date:T", "credibility_score:Q"]
-)
-st.altair_chart(cred_chart, use_container_width=True)
-
-# ---- METRICS ----
-st.subheader("📌 Key Metrics")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Prophetic Visions", int(data["prophetic_visions"].sum()))
-col2.metric("Total Salvation Stories", int(data["salvation_stories"].sum()))
-col3.metric("Total Near-Death Experiences", int(data["near_death_experiences"].sum()))
-
-st.write("✅ This dashboard is using **simulated data**. In the next version, it will connect to real-time platform APIs (YouTube, TikTok, X, Instagram).")
+# Testimony List
+st.subheader("Testimonies")
+for t in filtered_testimonies:
+    with st.expander(f"{t['title']} | {t['platform']} | Credibility: {t['credibility']}"):
+        st.write(t["description"])
+        st.markdown(f"[View Source]({t['link']})")
+        st.write("### Credibility Breakdown")
+        st.json(t["score_breakdown"])
