@@ -1,4 +1,6 @@
 streamlit
 pandas
-numpy
 altair
+pydeck
+requests
+textblob
