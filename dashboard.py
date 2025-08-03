@@ -7,6 +7,29 @@ import time
 
 st.set_page_config(page_title="Testimony Dashboard", layout="wide")
 
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import nltk
+nltk.download("vader_lexicon")
+
+sia = SentimentIntensityAnalyzer()
+
+def calculate_credibility_score(description, comments):
+    sentiment_scores = [sia.polarity_scores(c)["compound"] for c in comments]
+    avg_sentiment = np.mean(sentiment_scores) if sentiment_scores else 0
+
+    positive_comments = sum(1 for s in sentiment_scores if s > 0.2)
+    negative_comments = sum(1 for s in sentiment_scores if s < -0.2)
+
+    ridicule_factor = (negative_comments / max(len(sentiment_scores), 1)) * 50
+    support_factor = (positive_comments / max(len(sentiment_scores), 1)) * 50
+
+    # Frequency weight (placeholder)
+    frequency_factor = 10 if "testimony" in description.lower() or "rapture" in description.lower() else 0
+
+    # Base score (out of 100)
+    credibility_score = 50 + support_factor - ridicule_factor + frequency_factor
+    return max(0, min(100, credibility_score))
+
 # ----------------------------------------
 # Data Loading Functions
 # ----------------------------------------
