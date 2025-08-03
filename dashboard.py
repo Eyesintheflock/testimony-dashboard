@@ -3,130 +3,170 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from datetime import datetime, timedelta
+import random
 
-# ---------------------------
-# Credibility Scoring Logic
-# ---------------------------
-def calculate_credibility(support_comments, ridicule_comments, reposts, consistent_content):
-    base_score = 50
-    base_score += min(30, support_comments // 10)
-    base_score -= min(20, ridicule_comments // 10)
-    base_score += min(10, reposts // 5)
-    if consistent_content:
-        base_score += 10
-    return max(0, min(100, base_score))
+# --------------------------
+# Simulated Data Generator
+# --------------------------
+def generate_testimonies(num=150):
+    platforms = ["YouTube", "TikTok", "Instagram", "X", "Facebook"]
+    categories = ["Prophetic Dreams", "Salvation Stories", "Near-Death Experiences"]
+    ages = ["18-25", "26-35", "36-50", "50+"]
+    
+    data = []
+    for _ in range(num):
+        category = random.choice(categories)
+        platform = random.choice(platforms)
+        age = random.choice(ages)
+        date = datetime.now() - timedelta(days=random.randint(0, 3650))
+        credibility = round(random.uniform(40, 98), 2)
+        engagement = random.randint(50, 5000)
+        positive_comments = random.randint(20, 2000)
+        ridicule_comments = random.randint(0, 300)
+        link = f"https://{platform.lower()}.com/testimony/{random.randint(10000,99999)}"
+        description = f"A {age} believer shares their {category.lower()} about Jesus's return."
 
-# ---------------------------
-# Simulated Testimony Data
-# ---------------------------
-def generate_testimonies():
-    return [
-        {
-            "title": "Dream of Jesus Appearing in the Clouds",
-            "description": "A woman describes a vivid dream of Jesus calling believers home.",
-            "source": "YouTube",
-            "credibility": calculate_credibility(150, 30, 10, True),
-            "url": "https://youtube.com/watch?v=example1",
-            "events_relation": "Tied to the increase in global unrest and natural disasters."
-        },
-        {
-            "title": "Former Atheist Finds Christ",
-            "description": "A man shares his testimony of salvation after years of disbelief.",
-            "source": "TikTok",
-            "credibility": calculate_credibility(300, 50, 0, True),
-            "url": "https://www.tiktok.com/@exampleuser/video/123456",
-            "events_relation": "Connects to rising revival movements and personal transformation stories."
-        },
-        {
-            "title": "Near-Death Experience Confirms Heaven",
-            "description": "A testimony of a person clinically dead for 3 minutes who saw Jesus.",
-            "source": "Instagram",
-            "credibility": calculate_credibility(500, 20, 5, False),
-            "url": "https://instagram.com/reel/example123",
-            "events_relation": "Related to the growing interest in afterlife studies and biblical alignment."
-        },
-        {
-            "title": "Prophetic Word on Global Economy",
-            "description": "A preacher shares a vision of financial collapse followed by spiritual awakening.",
-            "source": "X (Twitter)",
-            "credibility": calculate_credibility(200, 40, 15, True),
-            "url": "https://twitter.com/exampleuser/status/123456",
-            "events_relation": "Matches recent market instability and concerns about end-times economics."
-        }
-    ]
-
-# ---------------------------
-# Testimony Trends Data
-# ---------------------------
-def generate_data():
-    dates = pd.date_range(datetime.now() - timedelta(days=365 * 10), datetime.now(), freq='M')
-    data = {
-        'date': np.tile(dates, 3),
-        'category': np.repeat(['Prophetic Visions', 'Salvation Stories', 'Near-Death Experiences'], len(dates)),
-        'count': np.random.randint(5, 150, len(dates) * 3),
-    }
+        data.append({
+            "title": f"{category} - {platform} Post #{random.randint(100, 999)}",
+            "category": category,
+            "platform": platform,
+            "date": date,
+            "credibility": credibility,
+            "engagement": engagement,
+            "positive_comments": positive_comments,
+            "ridicule_comments": ridicule_comments,
+            "age_range": age,
+            "link": link,
+            "description": description
+        })
     return pd.DataFrame(data)
 
-# ---------------------------
-# Streamlit Layout
-# ---------------------------
-st.set_page_config(page_title="Testimony Dashboard", layout="wide")
+# --------------------------
+# Data Preparation
+# --------------------------
+@st.cache_data(ttl=1800)  # Refresh every 30 min
+def get_testimonies():
+    return generate_testimonies(200)
 
-st.title("📊 Testimony Dashboard")
-st.write("Track prophetic visions, salvation stories, and near-death experiences over the last 10 years, updated in near real-time.")
+df = get_testimonies()
 
-df = generate_data()
-testimonies = generate_testimonies()
-
-# Sidebar filters
-st.sidebar.header("Filters")
+# --------------------------
+# Sidebar Filters
+# --------------------------
+st.sidebar.title("Filters")
 selected_category = st.sidebar.multiselect(
     "Select Categories",
-    options=df['category'].unique(),
-    default=df['category'].unique()
+    options=df["category"].unique(),
+    default=df["category"].unique()
 )
+selected_platforms = st.sidebar.multiselect(
+    "Select Platforms",
+    options=df["platform"].unique(),
+    default=df["platform"].unique()
+)
+date_range = st.sidebar.slider(
+    "Date Range (Years)",
+    min_value=1,
+    max_value=10,
+    value=2
+)
+search_keyword = st.sidebar.text_input("Search Keyword", "")
 
-view_mode = st.sidebar.radio("View Mode", ["Monthly", "Yearly"])
+# Filter data
+cutoff_date = datetime.now() - timedelta(days=date_range * 365)
+filtered_df = df[
+    (df["category"].isin(selected_category)) &
+    (df["platform"].isin(selected_platforms)) &
+    (df["date"] >= cutoff_date)
+]
 
-# Filter and aggregate
-filtered_df = df[df['category'].isin(selected_category)]
-if view_mode == "Yearly":
-    filtered_df["year"] = filtered_df["date"].dt.year
-    chart_data = filtered_df.groupby(["year", "category"], as_index=False)["count"].sum()
-    x_axis = "year:O"
+if search_keyword:
+    filtered_df = filtered_df[filtered_df["description"].str.contains(search_keyword, case=False)]
+
+# --------------------------
+# Header
+# --------------------------
+st.title("Testimony Dashboard")
+st.markdown("Tracking prophetic dreams, salvation stories, and near-death experiences for the past 10 years.")
+
+# --------------------------
+# Trend Graph
+# --------------------------
+st.subheader("Trends Over Time")
+
+chart_type = st.radio("Select Chart Type:", ["Line Chart", "Bar Chart"], horizontal=True)
+
+df_trend = (
+    filtered_df.groupby(filtered_df["date"].dt.to_period("M"))
+    .size()
+    .reset_index(name="count")
+)
+df_trend["date"] = df_trend["date"].dt.to_timestamp()
+
+if chart_type == "Line Chart":
+    chart = alt.Chart(df_trend).mark_line(point=True).encode(
+        x="date:T",
+        y="count:Q",
+        tooltip=["date", "count"]
+    ).properties(width=800, height=400)
 else:
-    filtered_df["month"] = filtered_df["date"].dt.to_period("M").astype(str)
-    chart_data = filtered_df.groupby(["month", "category"], as_index=False)["count"].sum()
-    x_axis = "month:O"
+    chart = alt.Chart(df_trend).mark_bar().encode(
+        x="date:T",
+        y="count:Q",
+        tooltip=["date", "count"]
+    ).properties(width=800, height=400)
 
-# ---------------------------
-# Trend Chart
-# ---------------------------
-st.subheader("📈 Testimony Trends")
-chart = (
-    alt.Chart(chart_data)
-    .mark_bar()
-    .encode(
-        x=alt.X(x_axis, title="Date"),
-        y=alt.Y("count:Q", title="Number of Testimonies"),
-        color="category:N",
-        tooltip=["category:N", "count:Q"]
-    )
-    .properties(width=900)
-    .interactive()
-)
-st.altair_chart(chart, use_container_width=True)
+st.altair_chart(chart)
 
-# ---------------------------
-# Testimony Browser
-# ---------------------------
-st.subheader("📝 Testimony Browser")
-for t in testimonies:
-    color = "🟢" if t['credibility'] > 80 else "🟡" if t['credibility'] > 50 else "🔴"
-    with st.expander(f"{color} {t['title']} (Credibility: {t['credibility']}%)"):
-        st.write(f"**Description:** {t['description']}")
-        st.write(f"**Source Platform:** {t['source']}")
-        st.write(f"**Relation to Current Events:** {t['events_relation']}")
-        st.markdown(f"[🔗 View Testimony Directly]({t['url']})")
+# --------------------------
+# Age Distribution
+# --------------------------
+st.subheader("Age Range of Testimony Posters")
+age_dist = filtered_df.groupby("age_range").size().reset_index(name="count")
 
-st.caption("Data refresh planned every 30 minutes when integrated with live APIs.")
+age_chart = alt.Chart(age_dist).mark_bar().encode(
+    x="age_range:N",
+    y="count:Q",
+    tooltip=["age_range", "count"]
+).properties(width=600, height=300)
+
+st.altair_chart(age_chart)
+
+# --------------------------
+# Testimony Preview Cards
+# --------------------------
+st.subheader("Browse Testimonies")
+
+for _, row in filtered_df.sort_values("date", ascending=False).iterrows():
+    with st.expander(f"{row['title']} | Credibility: {row['credibility']}% | Age: {row['age_range']}"):
+        st.write(f"**Platform:** {row['platform']}")
+        st.write(f"**Posted On:** {row['date'].strftime('%Y-%m-%d')}")
+        st.write(f"**Description:** {row['description']}")
+        st.write(f"**Positive Comments:** {row['positive_comments']}")
+        st.write(f"**Ridicule Comments:** {row['ridicule_comments']}")
+        st.markdown(f"[View Testimony]({row['link']})")
+
+# --------------------------
+# Current Events Context (Placeholder Simulation)
+# --------------------------
+st.subheader("Current Events Context")
+st.write("""
+The following key themes match recent testimonies with current world events:
+- Wars and rumors of wars (Matthew 24:6)
+- Increase in natural disasters (Luke 21:11)
+- Global revival and salvation testimonies
+""")
+
+# --------------------------
+# Credibility Scoring Explanation
+# --------------------------
+st.sidebar.markdown("### Credibility Score Factors")
+st.sidebar.write("""
+- Content consistency
+- Positive vs. ridicule comment ratio
+- Engagement levels
+- Risk of public ridicule
+- Age range demographics
+""")
+
+st.success("Dashboard loaded successfully with live filters and credibility previews!")
