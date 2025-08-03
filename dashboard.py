@@ -15,6 +15,33 @@ def load_testimonies():
 
 testimonies_df = load_testimonies()
 
+# ======================
+# CREDIBILITY SCORING FUNCTION
+# ======================
+def calculate_credibility(row):
+    base = row["credibility_score"]
+
+    # Sentiment weight
+    if row["comment_sentiment"] == "encouraging":
+        base += 5
+    elif row["comment_sentiment"] == "ridicule":
+        base += 10  # ridicule implies risk, which may increase credibility
+    elif row["comment_sentiment"] == "mixed":
+        base += 2
+
+    # Posting behavior weight
+    if row["post_frequency"] == "normal":
+        base += 3
+    elif row["post_frequency"] == "rare":
+        base += 7  # rare posts about testimonies seem more genuine
+    else:
+        base -= 5  # too frequent may indicate clickbait
+
+    return min(base, 100)  # cap at 100%
+
+# Apply credibility score dynamically
+testimonies_df["credibility_score"] = testimonies_df.apply(calculate_credibility, axis=1)
+
 st.title("Testimony Dashboard (Real-Time & Interactive)")
 st.write("Explore prophetic dreams, visions, near-death experiences, salvation testimonies, and Christian persecution trends.")
 
@@ -106,4 +133,4 @@ for _, row in filtered_df.iterrows():
 # ======================
 # FOOTER
 # ======================
-st.write("Data refreshes every 30 minutes. All links provided are user-submitted or collected via API integrations.")
+st.write("Data refreshes every 30 minutes. Credibility is calculated based on sentiment, posting behavior, and risk factors.")
