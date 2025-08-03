@@ -7,3 +7,5 @@ praw
 beautifulsoup4
 requests
 textblob
+pytube
+pydeck
