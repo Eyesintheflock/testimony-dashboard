@@ -27,7 +27,7 @@ persecution_df = load_persecution_data()
 # ======================
 # TITLE
 # ======================
-st.title("Testimony Dashboard with Real Links and Credibility Analysis")
+st.title("Testimony Dashboard with Real Links, Credibility, and Prophecy Correlation")
 
 # ======================
 # FILTERS
@@ -98,6 +98,36 @@ persecution_chart = alt.Chart(persecution_df).mark_bar().encode(
     tooltip=["country", "cases"]
 ).properties(width=800)
 st.altair_chart(persecution_chart, use_container_width=True)
+
+# ======================
+# PROPHECY CORRELATION
+# ======================
+st.subheader("Prophecy Correlation Analysis")
+
+prophecy_keywords = {
+    "Rapture": ["rapture", "caught up", "taken up"],
+    "Second Coming": ["second coming", "Jesus return", "Christ's return"],
+    "End Times": ["end times", "tribulation", "apocalypse", "mark of the beast"],
+    "Visions & Dreams": ["vision", "dream", "prophetic word"],
+}
+
+def analyze_prophecy_correlation(df):
+    results = {k: 0 for k in prophecy_keywords}
+    for _, row in df.iterrows():
+        description = row["description"].lower()
+        for category, keywords in prophecy_keywords.items():
+            if any(keyword in description for keyword in keywords):
+                results[category] += 1
+    return pd.DataFrame(list(results.items()), columns=["Prophecy Category", "Count"])
+
+prophecy_df = analyze_prophecy_correlation(filtered_df)
+
+prophecy_chart = alt.Chart(prophecy_df).mark_bar().encode(
+    x="Prophecy Category",
+    y="Count",
+    tooltip=["Prophecy Category", "Count"]
+)
+st.altair_chart(prophecy_chart, use_container_width=True)
 
 # ======================
 # TESTIMONY LIST WITH CREDIBILITY TOOLTIP
