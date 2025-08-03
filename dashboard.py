@@ -46,9 +46,9 @@ def generate_testimonies(n=100):
         is_believer = random.choice([True, False])
 
         # credibility scoring factors
-        post_frequency = random.uniform(0, 1)  # 0 to 1
-        ridicule_factor = random.uniform(0, 1)  # 0 to 1
-        supportive_comments = random.uniform(0, 1)  # 0 to 1
+        post_frequency = random.uniform(0, 1)
+        ridicule_factor = random.uniform(0, 1)
+        supportive_comments = random.uniform(0, 1)
 
         credibility = calculate_credibility(post_frequency, ridicule_factor, supportive_comments)
 
@@ -72,8 +72,31 @@ def generate_testimonies(n=100):
 
     return pd.DataFrame(data)
 
-# Generate initial dataset
+# Generate simulated persecution data
+def generate_persecution_data(years=10):
+    now = datetime.now()
+    data = []
+    for i in range(years * 12):  # monthly data
+        date = now - timedelta(days=i * 30)
+        documented_cases = random.randint(200, 3000)
+        online_cases = random.randint(int(documented_cases * 0.1), int(documented_cases * 0.6))
+
+        # mock link to online persecution reports
+        link = f"https://www.opendoors.org/en-US/persecution-reports/{date.year}/{date.month:02d}"
+
+        data.append({
+            "month": date.strftime("%Y-%m"),
+            "documented_cases": documented_cases,
+            "online_cases": online_cases,
+            "link": link
+        })
+
+    df = pd.DataFrame(data)
+    return df.sort_values("month")
+
+# Initial data generation
 df = generate_testimonies(300)
+persecution_df = generate_persecution_data(10)
 
 # ===============================
 # SIDEBAR CONTROLS
@@ -170,6 +193,36 @@ age_chart = alt.Chart(age_data).mark_bar().encode(
 st.altair_chart(age_chart, use_container_width=True)
 
 # ===============================
+# VISUALIZATION 4: GLOBAL PERSECUTION DATA
+# ===============================
+st.subheader("🌍 Global Christian Persecution Cases (10-Year Trend)")
+
+persecution_chart = alt.Chart(persecution_df).transform_fold(
+    ["documented_cases", "online_cases"],
+    as_=["type", "cases"]
+).mark_line(point=True).encode(
+    x="month:T",
+    y="cases:Q",
+    color=alt.Color("type:N", legend=alt.Legend(title="Case Type")),
+    tooltip=["month", "type", "cases"]
+).properties(
+    height=400,
+    width=900
+)
+
+st.altair_chart(persecution_chart, use_container_width=True)
+
+# Persecution percentage
+latest_month = persecution_df.iloc[-1]
+persecution_percentage = (latest_month["online_cases"] / latest_month["documented_cases"]) * 100
+st.metric("Online Persecution Stories (Latest Month)", f"{persecution_percentage:.1f}%")
+
+# Show persecution links
+st.subheader("🔗 Persecution Stories")
+for _, row in persecution_df.tail(5).iterrows():
+    st.markdown(f"[{row['month']} Persecution Report]({row['link']})")
+
+# ===============================
 # TESTIMONY LISTING
 # ===============================
 st.subheader("📝 Testimonies")
@@ -187,4 +240,5 @@ for index, row in filtered_df.iterrows():
 st.caption("Data auto-refreshes every 30 minutes with simulated new testimonies.")
 if st.button("🔄 Refresh Now"):
     df = generate_testimonies(300)
+    persecution_df = generate_persecution_data(10)
     st.experimental_rerun()
