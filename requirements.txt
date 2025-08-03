@@ -1,8 +1,9 @@
 streamlit
 pandas
+numpy
 altair
-pydeck
+google-api-python-client
+praw
+beautifulsoup4
 requests
 textblob
-praw
-google-api-python-client
